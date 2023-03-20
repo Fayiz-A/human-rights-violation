@@ -6,6 +6,7 @@ import CannonDebugger from 'cannon-es-debugger';
 import { LDrawLoader } from 'three/addons/loaders/LDrawLoader.js';
 import { LDrawUtils } from 'three/addons/utils/LDrawUtils.js';
 
+// tyre.ldr_Packed.mpd
 // window setup
 var windowSize = {
   'width': window.innerWidth,
@@ -42,29 +43,72 @@ physicsWorld.addBody(groundBody);
 
 groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
 
-const sphereBody = new CANNON.Body({
-  shape: new CANNON.Sphere(1),
-  mass: 5
-})
-
-sphereBody.position.y=16;
-sphereBody.position.x=3;
-
-physicsWorld.addBody(sphereBody);
+let fulcrumBodyDim = new CANNON.Vec3(20,30,200);
 
 const fulcrumBody = new CANNON.Body({
   type: CANNON.Body.STATIC,
-  shape: new CANNON.Box(new CANNON.Vec3(1,2,1)), 
+  shape: new CANNON.Box(fulcrumBodyDim), 
 });
 physicsWorld.addBody(fulcrumBody);
 
+let planeOverFulcrumMaterialBodyDim =  new CANNON.Vec3(500,2,200);
+
 const planeOverFulcrumBody = new CANNON.Body({
-  shape: new CANNON.Box(new CANNON.Vec3(5,1,1)), 
+  shape: new CANNON.Box(planeOverFulcrumMaterialBodyDim), 
   mass: 5,
 });
-planeOverFulcrumBody.position.y=12;
+planeOverFulcrumBody.position.y=fulcrumBodyDim.y+10;
 
 physicsWorld.addBody(planeOverFulcrumBody);
+
+let chasisWidth = 200;
+var vehicleChasisBody = new CANNON.Body({
+  shape: new CANNON.Box(new CANNON.Vec3(chasisWidth, 2, 100)),
+  mass: 1,
+  position: new CANNON.Vec3(200, planeOverFulcrumBody.position.y+10, 0),
+});
+
+const vehicleBody = new CANNON.RigidVehicle({
+  chassisBody: vehicleChasisBody,
+});
+
+function createWheel(wheelNum) {
+  if(wheelNum < 0 || wheelNum > 3) return;
+
+  const mass = 1
+  let axisWidth = chasisWidth;
+  const wheelShape = new CANNON.Sphere(1.5)
+  const wheelMaterial = new CANNON.Material('wheel')
+  const down = new CANNON.Vec3(0, -1, 0)
+  const centerOfMassAdjust = new CANNON.Vec3(0, -1, 0)
+  
+  const wheelBody = new CANNON.Body({ mass, material: wheelMaterial })
+
+  let axisZ = 1;
+  if(wheelNum == 0 || wheelNum == 1) { //back wheels
+    axisZ = axisZ*-1;
+    axisWidth = axisWidth*-1;
+  }
+
+  let posX = 100;
+  if(wheelNum == 0 || wheelNum == 3) { // left wheels
+    posX = posX*-1;
+  }
+
+  wheelBody.addShape(wheelShape)
+  vehicleBody.addWheel({
+    body: wheelBody,
+    position: new CANNON.Vec3(posX, 0, axisWidth / 2).vadd(centerOfMassAdjust),
+    axis: new CANNON.Vec3(0, 0, axisZ),
+    direction: down,
+  })
+}
+
+for(let i=0; i<4; i++) {
+  createWheel(i);
+}
+
+vehicleBody.addToWorld(physicsWorld);
 
 //Cannon Debugger
 const cannonDebugger = new CannonDebugger(
@@ -73,18 +117,11 @@ const cannonDebugger = new CannonDebugger(
 
 
 // THREE PART CONTD...
-//sphere created
-const sphereGeometry = new THREE.SphereGeometry(3, 50, 50);
-const sphereMaterial = new THREE.MeshNormalMaterial({
-  color: '#00ff83'
-});
-var mesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
-// scene.add(mesh);
-
 
 //camera
-const camera = new THREE.PerspectiveCamera(45, windowSize.width/windowSize.height, 0.1, 500);
-camera.position.z = 300;
+const camera = new THREE.PerspectiveCamera(45, windowSize.width/windowSize.height, 0.1, 1000);
+camera.position.y = 200;
+camera.position.z = 500;
 scene.add(camera);
 
 //light
@@ -113,57 +150,58 @@ const loader = new LDrawLoader();
 await loader.setPartsLibraryPath('/models/ldraw/');
 
 var model;
+var wheelModelArray = [];
 
 // Load a LDraw resource
 loader.load(
 	// resource URL
-	'models/bulldozerTest.ldr_Packed.mpd', 
+	'models/tyre.ldr_Packed.mpd', 
 	// called when the resource is loaded
 	function ( group ) {
+    for(var i = 0; i<4; i++) {
+      wheelModelArray[i] = group;
 
-    model = group;
-    // group.scale = new THREE.Vector3(1,1,1);
-    console.log(model);
-    console.log('LOADED');
-    function convertMaterial( material ) {
-
-    const newMaterial = new THREE.MeshBasicMaterial();
-    newMaterial.color.copy( material.color );
-    newMaterial.polygonOffset = material.polygonOffset;
-    newMaterial.polygonOffsetUnits = material.polygonOffsetUnits;
-    newMaterial.polygonOffsetFactor = material.polygonOffsetFactor;
-    newMaterial.opacity = material.opacity;
-    newMaterial.transparent = material.transparent;
-    newMaterial.depthWrite = material.depthWrite;
-    newMaterial.toneMapping = false;
-
-    return newMaterial;
-
-  }
-
-  model.traverse( c => {
-
-    if ( c.isMesh ) {
-
-      if ( Array.isArray( c.material ) ) {
-
-        c.material = c.material.map( convertMaterial );
-
-      } else {
-
-        c.material = convertMaterial( c.material );
-
-      }
-
+      console.log('LOADED');
+      function convertMaterial( material ) {
+  
+      const newMaterial = new THREE.MeshBasicMaterial();
+      newMaterial.color.copy( material.color );
+      newMaterial.polygonOffset = material.polygonOffset;
+      newMaterial.polygonOffsetUnits = material.polygonOffsetUnits;
+      newMaterial.polygonOffsetFactor = material.polygonOffsetFactor;
+      newMaterial.opacity = material.opacity;
+      newMaterial.transparent = material.transparent;
+      newMaterial.depthWrite = material.depthWrite;
+      newMaterial.toneMapping = false;
+  
+      return newMaterial;
+  
     }
-
-  } );
-  model = LDrawUtils.mergeObject( group );
-
-  model.rotation.x = Math.PI;
-
-		scene.add( model ); 
-
+  
+    wheelModelArray[i].traverse( c => {
+  
+      if ( c.isMesh ) {
+  
+        if ( Array.isArray( c.material ) ) {
+  
+          c.material = c.material.map( convertMaterial );
+  
+        } else {
+  
+          c.material = convertMaterial( c.material );
+  
+        }
+  
+      }
+  
+    } );
+    wheelModelArray[i] = LDrawUtils.mergeObject( group );
+  
+    wheelModelArray[i].rotation.x = Math.PI;
+      // vehicleBody.chassisBody = model;
+      // physicsWorld.addBody(vehicleBody);
+      scene.add( wheelModelArray[i] );
+    }
 	},
 	// called while loading is progressing
 	function ( xhr ) {
@@ -179,13 +217,44 @@ loader.load(
 	}
 );
 
+// THREE JS
+const fulcrumMaterial = new THREE.MeshBasicMaterial({
+  color: "green",
+});
+const fulcrumGeometry = new THREE.BoxGeometry(fulcrumBodyDim.x*2, fulcrumBodyDim.y*2, fulcrumBodyDim.z*2);
+var fulcrumMesh = new THREE.Mesh(fulcrumGeometry, fulcrumMaterial);
+
+scene.add(fulcrumMesh);
+
+const planeOverFulcrumMaterial = new THREE.MeshBasicMaterial({
+  color: "red",
+});
+const planeOverFulcrumGeometry = new THREE.BoxGeometry(planeOverFulcrumMaterialBodyDim.x*2, planeOverFulcrumMaterialBodyDim.y*2, planeOverFulcrumMaterialBodyDim.z*2);
+var planeOverFulcrumMesh = new THREE.Mesh(planeOverFulcrumGeometry, planeOverFulcrumMaterial);
+
+scene.add(planeOverFulcrumMesh);
+vehicleBody.setWheelForce(40, 2);
+
 //loop function
 const loop = () => {
-  if(model != null) {
-    model.position.x++;
-  }
 
-  mesh.position.copy(sphereBody.position);
+  var i=0;
+  wheelModelArray.forEach((wheel) => {
+    if(wheel != null && wheel.position != null) {
+      // vehicleBody.rotation
+      // console.log(vehicleBody.wheelBodies[2]);
+      wheel.position.copy(vehicleBody.wheelBodies[i].position);
+  
+      // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
+      // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
+  
+    }
+    i++;
+  });
+
+  planeOverFulcrumMesh.position.copy(planeOverFulcrumBody.position);
+  planeOverFulcrumMesh.quaternion.copy(planeOverFulcrumBody.quaternion);
+
   cannonDebugger.update();
   physicsWorld.fixedStep();
   controls.update();
