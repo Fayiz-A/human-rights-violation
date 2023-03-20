@@ -63,9 +63,9 @@ physicsWorld.addBody(planeOverFulcrumBody);
 
 let chasisWidth = 200;
 var vehicleChasisBody = new CANNON.Body({
-  shape: new CANNON.Box(new CANNON.Vec3(chasisWidth, 2, 100)),
+  shape: new CANNON.Box(new CANNON.Vec3(chasisWidth, 20, 100)),
   mass: 1,
-  position: new CANNON.Vec3(200, planeOverFulcrumBody.position.y+10, 0),
+  position: new CANNON.Vec3(200, planeOverFulcrumBody.position.y+40, 0),
 });
 
 const vehicleBody = new CANNON.RigidVehicle({
@@ -77,7 +77,7 @@ function createWheel(wheelNum) {
 
   const mass = 1
   let axisWidth = chasisWidth;
-  const wheelShape = new CANNON.Sphere(1.5)
+  const wheelShape = new CANNON.Sphere(20.5)
   const wheelMaterial = new CANNON.Material('wheel')
   const down = new CANNON.Vec3(0, -1, 0)
   const centerOfMassAdjust = new CANNON.Vec3(0, -1, 0)
@@ -110,6 +110,28 @@ for(let i=0; i<4; i++) {
 
 vehicleBody.addToWorld(physicsWorld);
 
+let peoplePhysicsArray = [];
+function createPeople(index) {
+  let posX = (Math.random()*300) + 400;
+  let posZ = (index)*20;
+  if(index < 6) {
+    posX=(Math.random()*-200)-100;
+    posZ = (Math.random()-5)*20;
+  }
+
+  var person = new CANNON.Body({
+    shape: new CANNON.Box(new CANNON.Vec3(4, 20, 4)),
+    mass: 0.1,
+    position: new CANNON.Vec3(posX, planeOverFulcrumBody.position.y+60, posZ),
+  });
+  physicsWorld.addBody(person);
+  peoplePhysicsArray[index] = person;
+}
+
+for(var i=0; i<17; i++) {
+  createPeople(i);
+}
+
 //Cannon Debugger
 const cannonDebugger = new CannonDebugger(
   scene, physicsWorld
@@ -119,9 +141,9 @@ const cannonDebugger = new CannonDebugger(
 // THREE PART CONTD...
 
 //camera
-const camera = new THREE.PerspectiveCamera(45, windowSize.width/windowSize.height, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(45, windowSize.width/windowSize.height, 0.1, 3000);
 camera.position.y = 200;
-camera.position.z = 500;
+camera.position.z = 1000;
 scene.add(camera);
 
 //light
@@ -142,6 +164,21 @@ renderer.setSize(windowSize.width, windowSize.height);
 
 renderer.render(scene, camera);
 
+var modelArray = [
+  {
+    type: "tyre",
+    path: "models/tyre.ldr_Packed.mpd"
+  },
+  {
+    type: "bulldozer",
+    path: "models/bulldozerTest.ldr_Packed.mpd"
+  },
+  {
+    type: "people",
+    path: "models/char1.ldr_Packed.mpd"
+  }
+]
+
 //loading
 // Instantiate a loader
 const loader = new LDrawLoader();
@@ -149,77 +186,111 @@ const loader = new LDrawLoader();
 // Optionally set library parts path
 await loader.setPartsLibraryPath('/models/ldraw/');
 
-var model;
+var peopleArray = [];
+var bulldozerModel;
 var wheelModelArray = [];
 
 // Load a LDraw resource
-loader.load(
-	// resource URL
-	'models/tyre.ldr_Packed.mpd', 
-	// called when the resource is loaded
-	function ( group ) {
-    for(var i = 0; i<4; i++) {
-      wheelModelArray[i] = group;
-
-      console.log('LOADED');
-      function convertMaterial( material ) {
+var index = 0;
+async function load() {
+    var modelObject = modelArray[index];
+    await loader.load(
+      // resource URL
+      modelObject.path, 
+      // called when the resource is loaded
+      async function ( group ) {
+        let limit = 1;
+        console.log(modelObject.type);
   
-      const newMaterial = new THREE.MeshBasicMaterial();
-      newMaterial.color.copy( material.color );
-      newMaterial.polygonOffset = material.polygonOffset;
-      newMaterial.polygonOffsetUnits = material.polygonOffsetUnits;
-      newMaterial.polygonOffsetFactor = material.polygonOffsetFactor;
-      newMaterial.opacity = material.opacity;
-      newMaterial.transparent = material.transparent;
-      newMaterial.depthWrite = material.depthWrite;
-      newMaterial.toneMapping = false;
-  
-      return newMaterial;
-  
-    }
-  
-    wheelModelArray[i].traverse( c => {
-  
-      if ( c.isMesh ) {
-  
-        if ( Array.isArray( c.material ) ) {
-  
-          c.material = c.material.map( convertMaterial );
-  
-        } else {
-  
-          c.material = convertMaterial( c.material );
-  
+        if(modelObject.type == "tyre") {
+          limit = 4;
+        } else if(modelObject.type == "people") {
+          limit = peoplePhysicsArray.length;
         }
   
+        let tempModelArray = [];
+        for(var i = 0; i<limit; i++) {
+          tempModelArray[i] = group;
+    
+          console.log('LOADED');
+        function convertMaterial( material ) {
+      
+          const newMaterial = new THREE.MeshBasicMaterial();
+          newMaterial.color.copy( material.color );
+          newMaterial.polygonOffset = material.polygonOffset;
+          newMaterial.polygonOffsetUnits = material.polygonOffsetUnits;
+          newMaterial.polygonOffsetFactor = material.polygonOffsetFactor;
+          newMaterial.opacity = material.opacity;
+          newMaterial.transparent = material.transparent;
+          newMaterial.depthWrite = material.depthWrite;
+          newMaterial.toneMapping = false;
+          
+          return newMaterial;
+      
+        }
+      
+        tempModelArray[i].traverse( c => {
+          if ( c.isMesh ) {
+            // c.geometry.translate(-20,10,0);
+            // console.log(c);
+            if ( Array.isArray( c.material ) ) {
+      
+              c.material = c.material.map(convertMaterial );
+      
+            } else {
+      
+              c.material = convertMaterial( c.material );
+      
+            }
+          }
+      
+        } );
+          tempModelArray[i] = await LDrawUtils.mergeObject( group );
+          if(modelObject.type == "people") {
+            tempModelArray[i].rotation.z = Math.PI;
+          }
+          // vehicleBody.chassisBody = model;
+          // physicsWorld.addBody(vehicleBody);
+          scene.add(tempModelArray[i]);
+        }
+        if(modelObject.type == "tyre") {
+
+          wheelModelArray = [...tempModelArray];
+  
+        } else if(modelObject.type == "bulldozer") {
+  
+          bulldozerModel = tempModelArray[0];//should have only one
+          bulldozerModel.rotation.x = Math.PI;
+          bulldozerModel.rotation.y = Math.PI;
+        } else if(modelObject.type == "people") {
+          console.log("people");
+          peopleArray = [...tempModelArray];
+        } else {
+          console.log('Unknown model object type given' + modelObject.type);
+        }
+        index++;
+        if(index<modelArray.length) load();
+      },
+      // called while loading is progressing
+      function ( xhr ) {
+    
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+    
+      },
+      // called when loading has errors
+      function ( error ) {
+    
+        console.log( 'An error happened' + error );
+    
       }
-  
-    } );
-    wheelModelArray[i] = LDrawUtils.mergeObject( group );
-  
-    wheelModelArray[i].rotation.x = Math.PI;
-      // vehicleBody.chassisBody = model;
-      // physicsWorld.addBody(vehicleBody);
-      scene.add( wheelModelArray[i] );
-    }
-	},
-	// called while loading is progressing
-	function ( xhr ) {
+    );
+}
 
-		console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-
-	},
-	// called when loading has errors
-	function ( error ) {
-
-		console.log( 'An error happened' + error );
-
-	}
-);
+await load();
 
 // THREE JS
 const fulcrumMaterial = new THREE.MeshBasicMaterial({
-  color: "green",
+  color: "#21130d",
 });
 const fulcrumGeometry = new THREE.BoxGeometry(fulcrumBodyDim.x*2, fulcrumBodyDim.y*2, fulcrumBodyDim.z*2);
 var fulcrumMesh = new THREE.Mesh(fulcrumGeometry, fulcrumMaterial);
@@ -227,13 +298,17 @@ var fulcrumMesh = new THREE.Mesh(fulcrumGeometry, fulcrumMaterial);
 scene.add(fulcrumMesh);
 
 const planeOverFulcrumMaterial = new THREE.MeshBasicMaterial({
-  color: "red",
+  color: "#eab676",
 });
-const planeOverFulcrumGeometry = new THREE.BoxGeometry(planeOverFulcrumMaterialBodyDim.x*2, planeOverFulcrumMaterialBodyDim.y*2, planeOverFulcrumMaterialBodyDim.z*2);
+const planeOverFulcrumGeometry = new THREE.BoxBufferGeometry(planeOverFulcrumMaterialBodyDim.x*2, planeOverFulcrumMaterialBodyDim.y*2, planeOverFulcrumMaterialBodyDim.z*2);
+
 var planeOverFulcrumMesh = new THREE.Mesh(planeOverFulcrumGeometry, planeOverFulcrumMaterial);
 
 scene.add(planeOverFulcrumMesh);
-vehicleBody.setWheelForce(40, 2);
+vehicleBody.setWheelForce(600, 3);
+vehicleBody.setWheelForce(600, 2);
+// vehicleBody.setWheelForce(4000, 1);
+// vehicleBody.setWheelForce(4000, 0);
 
 //loop function
 const loop = () => {
@@ -243,8 +318,8 @@ const loop = () => {
     if(wheel != null && wheel.position != null) {
       // vehicleBody.rotation
       // console.log(vehicleBody.wheelBodies[2]);
-      wheel.position.copy(vehicleBody.wheelBodies[i].position);
-  
+      // wheel.position.copy(vehicleBody.wheelBodies[i].position);
+      // wheel.rotation.z+=0.1;
       // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
       // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
   
@@ -252,10 +327,30 @@ const loop = () => {
     i++;
   });
 
+  var i=0;
+  peopleArray.forEach((person) => {
+    if(person != null && person.position != null) {
+      // vehicleBody.rotation
+      // console.log(vehicleBody.wheelBodies[2]);
+      person.position.copy(peoplePhysicsArray[i].position);
+      // wheel.rotation.z+=0.1;
+      // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
+      // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
+  
+    }
+    i++;
+  });
+
+  // console.log(vehicleBody.wheelBodies[1]);
+  if(bulldozerModel) {
+    bulldozerModel.position.copy(vehicleChasisBody.position);
+    bulldozerModel.position.y -=30;
+  }
+  
   planeOverFulcrumMesh.position.copy(planeOverFulcrumBody.position);
   planeOverFulcrumMesh.quaternion.copy(planeOverFulcrumBody.quaternion);
 
-  cannonDebugger.update();
+  // cannonDebugger.update();
   physicsWorld.fixedStep();
   controls.update();
   renderer.render(scene, camera);
