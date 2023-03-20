@@ -329,6 +329,11 @@ const planeOverFulcrumGeometry = new THREE.BoxBufferGeometry(planeOverFulcrumMat
 var planeOverFulcrumMesh = new THREE.Mesh(planeOverFulcrumGeometry, planeOverFulcrumMaterial);
 
 scene.add(planeOverFulcrumMesh);
+var geo = new THREE.EdgesGeometry( planeOverFulcrumMesh.geometry ); // or WireframeGeometry
+var mat = new THREE.LineBasicMaterial( { color: 'black' } );
+var wireframe = new THREE.LineSegments( geo, mat );
+planeOverFulcrumMesh.add( wireframe );
+
 vehicleBody.setWheelForce(600, 3);
 vehicleBody.setWheelForce(600, 2);
 // vehicleBody.setWheelForce(4000, 1);
@@ -357,6 +362,9 @@ const loop = () => {
       // vehicleBody.rotation
       // console.log(vehicleBody.wheelBodies[2]);
       person.position.copy(peoplePhysicsArray[i].position);
+      person.position.y-=20;
+      person.position.z+=100;
+      
       // wheel.rotation.z+=0.1;
       // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
       // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
