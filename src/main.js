@@ -111,12 +111,15 @@ for(let i=0; i<4; i++) {
 vehicleBody.addToWorld(physicsWorld);
 
 let peoplePhysicsArray = [];
-function createPeople(index) {
-  let posX = (Math.random()*300) + 400;
-  let posZ = (index)*20;
-  if(index < 6) {
-    posX=(Math.random()*-200)-100;
-    posZ = (Math.random()-5)*20;
+let singlePhysicsArray = [];
+function createPeople(index, isSingle) {
+  let posX = (Math.random()*-200)-100;
+  let posZ = (Math.random()-5)*20;
+  if(!isSingle) {
+    if(index > 6) {
+      posX= (Math.random()*300) + 400;
+      posZ = (index)*20;
+    }
   }
 
   var person = new CANNON.Body({
@@ -125,11 +128,18 @@ function createPeople(index) {
     position: new CANNON.Vec3(posX, planeOverFulcrumBody.position.y+60, posZ),
   });
   physicsWorld.addBody(person);
-  peoplePhysicsArray[index] = person;
+  if(isSingle) {
+    singlePhysicsArray[index] = person;
+  } else {
+    peoplePhysicsArray[index] = person;
+  }
 }
 
 for(var i=0; i<17; i++) {
-  createPeople(i);
+  createPeople(i, false);
+}
+for(var i=0; i<2; i++) {
+  createPeople(i, true);
 }
 
 //Cannon Debugger
@@ -176,6 +186,14 @@ var modelArray = [
   {
     type: "people",
     path: "models/char1.ldr_Packed.mpd"
+  },
+  {
+    type: "singles",
+    path: "models/hammer.ldr_Packed.mpd"
+  },
+  {
+    type: "singles",
+    path: "models/house.ldr_Packed.mpd"
   }
 ]
 
@@ -187,6 +205,7 @@ const loader = new LDrawLoader();
 await loader.setPartsLibraryPath('/models/ldraw/');
 
 var peopleArray = [];
+var singlesArray = [];
 var bulldozerModel;
 var wheelModelArray = [];
 
@@ -248,6 +267,8 @@ async function load() {
           tempModelArray[i] = await LDrawUtils.mergeObject( group );
           if(modelObject.type == "people") {
             tempModelArray[i].rotation.z = Math.PI;
+          } else if(modelObject.type == "singles") {
+            tempModelArray[i].rotation.z = Math.PI;
           }
           // vehicleBody.chassisBody = model;
           // physicsWorld.addBody(vehicleBody);
@@ -265,6 +286,9 @@ async function load() {
         } else if(modelObject.type == "people") {
           console.log("people");
           peopleArray = [...tempModelArray];
+        } else if(modelObject.type == "singles") {
+          singlesArray.push(...tempModelArray);
+          console.log(singlePhysicsArray);
         } else {
           console.log('Unknown model object type given' + modelObject.type);
         }
@@ -341,6 +365,19 @@ const loop = () => {
     i++;
   });
 
+  var i=0;
+  singlesArray.forEach((singles) => {
+    if(singles != null && singles.position != null) {
+      // vehicleBody.rotation
+      // console.log(vehicleBody.wheelBodies[2]);
+      singles.position.copy(singlePhysicsArray[i].position);
+      // wheel.rotation.z+=0.1;
+      // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
+      // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
+  
+    }
+    i++;
+  });
   // console.log(vehicleBody.wheelBodies[1]);
   if(bulldozerModel) {
     bulldozerModel.position.copy(vehicleChasisBody.position);
