@@ -61,11 +61,11 @@ planeOverFulcrumBody.position.y=fulcrumBodyDim.y+10;
 
 physicsWorld.addBody(planeOverFulcrumBody);
 
-let chasisWidth = 200;
+let chasisWidth = 100;
 var vehicleChasisBody = new CANNON.Body({
   shape: new CANNON.Box(new CANNON.Vec3(chasisWidth, 20, 100)),
   mass: 1,
-  position: new CANNON.Vec3(200, planeOverFulcrumBody.position.y+40, 0),
+  position: new CANNON.Vec3(150, planeOverFulcrumBody.position.y+40, 0),
 });
 
 const vehicleBody = new CANNON.RigidVehicle({
@@ -117,13 +117,15 @@ function createPeople(index, isSingle) {
   let posZ = (Math.random()-5)*20;
   if(!isSingle) {
     if(index > 6) {
-      posX= (Math.random()*300) + 400;
-      posZ = (index)*20;
+      posX= (Math.random()*300) + 300;
+      posZ = (index-6)*20;
     }
+  } else {
+    posZ = ((Math.random())*50);
   }
 
   var person = new CANNON.Body({
-    shape: new CANNON.Box(new CANNON.Vec3(4, 20, 4)),
+    shape: new CANNON.Box(new CANNON.Vec3(isSingle?30:4, 20, 4)),
     mass: 0.1,
     position: new CANNON.Vec3(posX, planeOverFulcrumBody.position.y+60, posZ),
   });
@@ -314,7 +316,7 @@ await load();
 
 // THREE JS
 const fulcrumMaterial = new THREE.MeshBasicMaterial({
-  color: "#21130d",
+  color: "#4d2c1e",
 });
 const fulcrumGeometry = new THREE.BoxGeometry(fulcrumBodyDim.x*2, fulcrumBodyDim.y*2, fulcrumBodyDim.z*2);
 var fulcrumMesh = new THREE.Mesh(fulcrumGeometry, fulcrumMaterial);
@@ -362,9 +364,9 @@ const loop = () => {
       // vehicleBody.rotation
       // console.log(vehicleBody.wheelBodies[2]);
       person.position.copy(peoplePhysicsArray[i].position);
+      person.position.x+=130;
       person.position.y-=20;
       person.position.z+=100;
-      
       // wheel.rotation.z+=0.1;
       // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
       // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
@@ -379,6 +381,7 @@ const loop = () => {
       // vehicleBody.rotation
       // console.log(vehicleBody.wheelBodies[2]);
       singles.position.copy(singlePhysicsArray[i].position);
+      // singles.position.x-=100;
       // wheel.rotation.z+=0.1;
       // model.quaternion.copy(vehicleBody.wheelBodies[2].quaternion);
       // model.rotation.set(vehicleChasisBody.rotation.x + Math.PI / 2, vehicleChasisBody.rotation.y, vehicleChasisBody.rotation.z)
