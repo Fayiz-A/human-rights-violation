@@ -120,6 +120,8 @@ function createPeople(index, isSingle) {
       posX= (Math.random()*300) + 400;
       posZ = (index)*20;
     }
+  } else {
+    posZ = ((Math.random())*50);
   }
 
   var person = new CANNON.Body({
